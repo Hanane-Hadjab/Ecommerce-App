@@ -5,6 +5,12 @@ import {Country} from "../../common/country";
 import {State} from "../../common/state";
 import {ShopValidators} from "../../validators/shop-validators";
 import {CartService} from "../../services/cart.service";
+import {CheckoutService} from "../../services/checkout.service";
+import {Router} from "@angular/router";
+import {Order} from "../../common/order";
+import {OrderItem} from "../../common/order-item";
+import {Purchase} from "../../common/purchase";
+import {error} from "@angular/compiler-cli/src/transformers/util";
 
 @Component({
     selector: 'app-checkout',
@@ -28,7 +34,9 @@ export class CheckoutComponent implements OnInit {
 
     constructor(private formBuilder: FormBuilder,
                 private shopFormService: ShopFormService,
-                private cartService: CartService
+                private cartService: CartService,
+                private checkoutService: CheckoutService,
+                private router: Router
     ) {
 
     }
@@ -97,12 +105,11 @@ export class CheckoutComponent implements OnInit {
         // populate credit card months
         const startMonth = new Date().getMonth() + 1;
 
-        this.shopFormService.getCreditCardMonths(startMonth)
-            .subscribe(
-                data => {
-                    this.creditCardMonths = data;
-                }
-            )
+        this.shopFormService.getCreditCardMonths(startMonth).subscribe(
+            data => {
+                this.creditCardMonths = data;
+            }
+        )
         // populate credit card years
 
         this.shopFormService.getCreditCardYears().subscribe(
@@ -115,7 +122,6 @@ export class CheckoutComponent implements OnInit {
             data => {
                 console.log("the countries data  is ", data);
                 this.countries = data;
-                console.log("Apres assignat ", this.countries);
             }
         )
 
@@ -123,10 +129,70 @@ export class CheckoutComponent implements OnInit {
     }
 
     onSubmit() {
-        console.log("Handling the submit button");
         if (this.checkoutFormGroup.invalid) {
             this.checkoutFormGroup.markAllAsTouched();
+            return;
         }
+        /* call service to update order  ------------- Steps ----------------------- */
+        // set up order
+        // get cart items
+        // create orderItems from cartItems
+        //           *********** setup purchase ************
+        // populate purchase - customer
+        // populate purchase - shipping address
+        // populate purchase - billing address
+        // populate purchase - billing order and orderItems
+        // call REST API via CheckoutService
+
+        // @ts-ignore
+        let purchase = new Purchase();
+
+        // @ts-ignore
+        let order: Order = new Order();
+        order.totalPrice = this.totalPrice;
+        order.totalQuantity = this.totalQuantity;
+
+        const cartItems = this.cartService.cartItems;
+
+        // order items
+        let orderItemsShort: OrderItem[] = cartItems.map(tempCartItem => new OrderItem(tempCartItem));
+
+        // shipping address
+        purchase.shippingAddress = this.checkoutFormGroup.controls['shippingAddress'].value;
+        const shippingState: State = JSON.parse(JSON.stringify(purchase.shippingAddress.state));
+        const shippingCountry: State = JSON.parse(JSON.stringify(purchase.shippingAddress.country));
+        purchase.shippingAddress.state = shippingState.name;
+        purchase.shippingAddress.country = shippingCountry.name;
+
+        // billing address
+        purchase.billingAddress = this.checkoutFormGroup.controls['billingAddress'].value;
+        const billingState: State = JSON.parse(JSON.stringify(purchase.billingAddress.state));
+        const billingCountry: State = JSON.parse(JSON.stringify(purchase.billingAddress.country));
+        purchase.billingAddress.state = billingState.name;
+        purchase.billingAddress.country = billingCountry.name;
+
+        // customer
+        purchase.customer = this.checkoutFormGroup.controls['customer'].value;
+
+        purchase.order = order;
+
+        purchase.orderItems = orderItemsShort;
+
+        // Call API REST
+
+        this.checkoutService.placeOrder(purchase).subscribe({
+                next: response => {
+                    alert(`Your order has been received.\n Order tracking number: ${response.orderTrackingNumber}`);
+
+                    // reset cart
+
+                    this.resetCart();
+                },
+                error: err => {
+                    alert(`There was an error: ${err.message}`);
+                }
+            }
+        );
     }
 
     copyShippingAddressToBillingAddress(event: any) {
@@ -251,14 +317,6 @@ export class CheckoutComponent implements OnInit {
         return this.checkoutFormGroup.get('creditCard.securityCode');
     }
 
-    get creditCardExpirationMonth() {
-        return this.checkoutFormGroup.get('creditCard.expirationMonth');
-    }
-
-    get creditCardExpirationYear() {
-        return this.checkoutFormGroup.get('creditCard.expirationYear');
-    }
-
     private reviewCartDetails() {
         this.cartService.totalPrice.subscribe(
             data => this.totalPrice = data
@@ -267,5 +325,19 @@ export class CheckoutComponent implements OnInit {
         this.cartService.totalQuantity.subscribe(
             data => this.totalQuantity = data
         );
+    }
+
+    private resetCart() {
+
+        // reset cart data
+        this.cartService.cartItems = [];
+        this.cartService.totalPrice.next(0);
+        this.cartService.totalQuantity.next(0);
+
+        //reset form
+        this.checkoutFormGroup.reset();
+
+        // navigate back to the products pages
+        this.router.navigateByUrl("/products");
     }
 }

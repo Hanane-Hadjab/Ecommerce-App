@@ -8,6 +8,7 @@ import {BehaviorSubject, ReplaySubject, Subject} from "rxjs";
 export class CartService {
 
     cartItems: CartItem[] = [];
+    storage: Storage = localStorage;
 
     // Subject is a subclass of Observable, donc se sont des observable qui peuvent envoyer des evènements
     // ReplaySubject is subclass of Subject !!
@@ -17,6 +18,18 @@ export class CartService {
     totalQuantity: Subject<number> = new BehaviorSubject<number>(0);
 
     constructor() {
+        // json.parse : convert json string to object
+        let data = JSON.parse(this.storage.getItem('cartItems')!);
+
+        if (data != null) {
+            this.cartItems = data;
+            this.computeCarteTotals();
+        }
+    }
+
+    persistCartItems() {
+        // Json.stringif: converts objects to json string
+        this.storage.setItem('cartItems', JSON.stringify(this.cartItems));
     }
 
     addToCart(theCartItem: CartItem) {
@@ -59,6 +72,8 @@ export class CartService {
 
         // log cart data just for debugging
         this.logCartData(totalPriceValue, totalQuantityValue);
+
+        this.persistCartItems();
     }
 
     logCartData(totalPriceValue: number, totalQuantityValue: number) {

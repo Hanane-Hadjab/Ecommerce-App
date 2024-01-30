@@ -51,7 +51,6 @@ export class ShopFormService {
 
         const searchUrl = `${this.statesUrl}/search/findByCountryCode?code=${theCountryCode}`;
 
-        console.log("the url is ", searchUrl);
         return this.httpClient.get<GetResponseStates>(searchUrl).pipe(
             map(response => response._embedded.states)
         );

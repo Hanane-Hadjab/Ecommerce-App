@@ -1,9 +1,6 @@
 package com.myapp.ecommerce.config;
 
-import com.myapp.ecommerce.entity.Country;
-import com.myapp.ecommerce.entity.Product;
-import com.myapp.ecommerce.entity.ProductCategory;
-import com.myapp.ecommerce.entity.State;
+import com.myapp.ecommerce.entity.*;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.metamodel.EntityType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +42,7 @@ public class MyDataRestConfig implements RepositoryRestConfigurer {
 
         disableHttpMethods(Country.class, config, theUnsupportedMethod);
 
+        disableHttpMethods(Order.class, config, theUnsupportedMethod);
 
         // Par default les ids ne sont pas exposées sur les urls
         // Pour exposer les ids des objet de nos entities, afin d'avoir accée au IDS depuis nos app front
